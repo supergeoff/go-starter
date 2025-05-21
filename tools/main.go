@@ -59,33 +59,34 @@ func Lint() error {
 
 	for _, modulePath := range modules {
 		fmt.Printf("===> Linting module: %s\n", modulePath)
-		cleanModulePath := filepath.Clean(modulePath)
+		modulePath = filepath.Clean(modulePath)
 
 		// This is the actual directory where the module resides, relative to workspace root
 		// e.g., "apps/client"
 		// We need to construct the path to this directory relative to tools/
-		actualModuleDir := filepath.Join("..", cleanModulePath) // e.g., ../apps/client
+		relModuleDir := filepath.Join("..", modulePath) // e.g., ../apps/client
 
 		args := []string{
 			"run",
 			"./...", // Lint all packages within the CWD
 		}
 
-		fmt.Printf("Running: (cd %s && golangci-lint %v)\n", actualModuleDir, args)
+		fmt.Printf("Running: (cd %s && golangci-lint %v)\n", relModuleDir, args)
 		// Call run with the target directory
-		err := run(actualModuleDir, "golangci-lint", args...) // MODIFIED call
+		err := run(relModuleDir, "golangci-lint", args...)
 		if err != nil {
 			// The error from run already includes command details if cmd.Run() fails
-			return fmt.Errorf("golangci-lint failed for module %s: %w", cleanModulePath, err)
+			return fmt.Errorf("golangci-lint failed for module %s: %w", modulePath, err)
 		}
-		fmt.Printf("<=== Finished linting module: %s\n", cleanModulePath)
+		fmt.Printf("<=== Finished linting module: %s\n", modulePath)
 	}
 
 	fmt.Println("All modules linted successfully (by tools/magefile.go).")
 	return nil
 }
 
-func ServeBackend() error {
-	actualModuleDir := filepath.Join("..", "apps/server")
-	return run(actualModuleDir, "air", "-c", ".air.toml")
+func Serve(dirpath string) error {
+	relModuleDir := filepath.Join("..", filepath.Clean(dirpath))
+	return run(relModuleDir, "air", "-c", ".air.toml")
 }
+

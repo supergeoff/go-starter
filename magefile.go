@@ -16,6 +16,6 @@ func Lint() error {
 	return sh.RunV("mage", "-d", "./tools", "lint")
 }
 
-func ServeBackend() error {
-	return sh.RunV("mage", "-d", "./tools", "servebackend")
+func Serve(dirpath string) error {
+	return sh.RunV("mage", "-d", "./tools", "serve", dirpath)
 }
