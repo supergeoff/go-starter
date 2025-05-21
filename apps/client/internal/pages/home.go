@@ -2,14 +2,11 @@ package pages
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/supergeoff/go-starter/apps/client/templates"
 )
-
-type indexData struct {
-	Status string
-}
 
 func Home(w http.ResponseWriter, r *http.Request) {
 	// appelle le backend
@@ -20,7 +17,13 @@ func Home(w http.ResponseWriter, r *http.Request) {
 		if json.NewDecoder(resp.Body).Decode(&b) == nil && b["message"] == "check" {
 			status = "check"
 		}
-		resp.Body.Close()
+		err := resp.Body.Close()
+		if err != nil {
+			fmt.Printf("Error closing response body: %v\n", err)
+		}
 	}
-	templates.HomeTempl(status).Render(r.Context(), w)
+	err = templates.HomeTempl(status).Render(r.Context(), w)
+	if err != nil {
+		fmt.Printf("Error rendering home: %v\n", err)
+	}
 }

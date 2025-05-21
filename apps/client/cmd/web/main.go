@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -15,5 +16,8 @@ func main() {
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 		pages.Home(w, r)
 	})
-	http.ListenAndServe(":3001", r)
+	err := http.ListenAndServe(":3001", r)
+	if err != nil {
+		panic(fmt.Sprintf("Server failed to start: %v", err))
+	}
 }
