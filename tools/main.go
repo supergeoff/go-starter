@@ -87,6 +87,68 @@ func Lint() error {
 
 func Serve(dirpath string) error {
 	relModuleDir := filepath.Join("..", filepath.Clean(dirpath))
-	return run(relModuleDir, "air", "-c", ".air.toml")
+	return run(relModuleDir, "go", "tool", "air", "-c", ".air.toml")
 }
 
+// Install downloads and installs the Tailwind CSS CLI tool into the tools directory if not already present.
+func Install() error {
+	// finalPath is relative to the tools directory (where the magefile is)
+	finalPath := "tailwindcss"
+
+	// Check if the tool already exists and is executable in the tools directory
+	if info, err := os.Stat(finalPath); err == nil {
+		if !info.IsDir() && (info.Mode().Perm()&0o111 != 0) { // Check if it's a file and executable
+			fmt.Printf(
+				"Tailwind CSS (%s) already installed and executable in tools/. Skipping installation.\n",
+				finalPath,
+			)
+			return nil
+		}
+		// File exists but is not a valid executable (e.g., a directory, or not executable).
+		// We'll proceed to remove it and reinstall.
+		fmt.Printf(
+			"Found %s in tools/, but it's not a valid executable file or has wrong permissions. Proceeding with re-installation.\n",
+			finalPath,
+		)
+		if err := os.RemoveAll(finalPath); err != nil { // Use RemoveAll in case it's a directory
+			return fmt.Errorf("failed to remove existing non-executable %s: %w", finalPath, err)
+		}
+	} else if !os.IsNotExist(err) {
+		// An error other than "file does not exist" occurred with os.Stat
+		return fmt.Errorf("failed to check status of %s in tools/: %w", finalPath, err)
+	}
+	// If os.IsNotExist(err) is true, or if we've removed an invalid existing file, proceed with installation.
+
+	fmt.Println("Installing Tailwind CSS to tools/ ...")
+
+	tailwindURL := "https://github.com/tailwindlabs/tailwindcss/releases/download/v4.1.7/tailwindcss-linux-x64"
+	// downloadPath is also relative to the tools directory
+	downloadPath := "tailwindcss-linux-x64"
+
+	// Clean up potentially existing temporary download file
+	_ = os.Remove(downloadPath)
+
+	fmt.Printf("Downloading Tailwind CSS from %s to %s (in tools/)...\n", tailwindURL, downloadPath)
+	// The run command's workDir is "", so it executes in the current directory (tools/)
+	err := run("", "curl", "-sLO", tailwindURL)
+	if err != nil {
+		return fmt.Errorf("failed to download Tailwind CSS: %w", err)
+	}
+
+	// Rename the downloaded file
+	fmt.Printf("Renaming %s to %s (in tools/)...\n", downloadPath, finalPath)
+	if err := os.Rename(downloadPath, finalPath); err != nil {
+		_ = os.Remove(downloadPath) // Attempt to clean up downloaded file if rename fails
+		return fmt.Errorf("failed to rename %s to %s: %w", downloadPath, finalPath, err)
+	}
+
+	// Make it executable
+	fmt.Printf("Making %s executable (in tools/)...\n", finalPath)
+	if err := os.Chmod(finalPath, 0o755); err != nil {
+		_ = os.Remove(finalPath) // Attempt to clean up renamed file if chmod fails
+		return fmt.Errorf("failed to make %s executable: %w", finalPath, err)
+	}
+
+	fmt.Printf("Tailwind CSS (%s) installed successfully in tools/.\n", finalPath)
+	return nil
+}

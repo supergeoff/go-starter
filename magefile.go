@@ -19,3 +19,7 @@ func Lint() error {
 func Serve(dirpath string) error {
 	return sh.RunV("mage", "-d", "./tools", "serve", dirpath)
 }
+
+func Install() error {
+	return sh.RunV("mage", "-d", "./tools", "install")
+}
