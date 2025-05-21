@@ -9,7 +9,7 @@ import (
 
 func main() {
 	r := chi.NewRouter()
-	fs := http.FileServer(http.Dir("assets"))
+	fs := http.FileServer(http.Dir("build/assets"))
 	r.Handle("/static/*", http.StripPrefix("/static/", fs))
 
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
