@@ -3,13 +3,11 @@ package pages
 import (
 	"encoding/json"
 	"fmt"
+	"html/template"
 	"net/http"
-
-	"github.com/supergeoff/go-starter/apps/client/templates"
 )
 
 func Home(w http.ResponseWriter, r *http.Request) {
-	// appelle le backend
 	resp, err := http.Get("http://localhost:3000/api")
 	status := "down"
 	if err == nil && resp.StatusCode == 200 {
@@ -22,8 +20,13 @@ func Home(w http.ResponseWriter, r *http.Request) {
 			fmt.Printf("Error closing response body: %v\n", err)
 		}
 	}
-	err = templates.HomeTempl(status).Render(r.Context(), w)
+
+	tmp, err := template.ParseFiles("templates/home.go.tmpl")
 	if err != nil {
-		fmt.Printf("Error rendering home: %v\n", err)
+		fmt.Printf("Error parsing home: %v\n", err)
+	}
+	err = tmp.Execute(w, struct{ Status string }{Status: status})
+	if err != nil {
+		fmt.Printf("Error executing home: %v\n", err)
 	}
 }
