@@ -21,7 +21,7 @@ func Home(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	tmp, err := template.ParseFiles("templates/home.go.tmpl")
+	tmp, err := template.ParseFiles("templates/home.tmpl")
 	if err != nil {
 		fmt.Printf("Error parsing home: %v\n", err)
 	}
