@@ -2,31 +2,32 @@ package pages
 
 import (
 	"encoding/json"
-	"fmt"
-	"html/template"
+	"log/slog"
 	"net/http"
+
+	"github.com/supergeoff/go-starter/apps/client/templates"
 )
 
+type Response struct {
+	Message string `json:"message"`
+}
+
 func Home(w http.ResponseWriter, r *http.Request) {
+	var data Response
+
 	resp, err := http.Get("http://localhost:3000/api")
-	status := "down"
-	if err == nil && resp.StatusCode == 200 {
-		var b map[string]string
-		if json.NewDecoder(resp.Body).Decode(&b) == nil && b["message"] == "check" {
-			status = "check"
-		}
-		err := resp.Body.Close()
-		if err != nil {
-			fmt.Printf("Error closing response body: %v\n", err)
+	if err != nil {
+		slog.Error("Error making GET request", "error", err)
+		data.Message = "down"
+	} else {
+		defer resp.Body.Close()
+		if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+			slog.Error("Failed to decode JSON", "error", err)
 		}
 	}
 
-	tmp, err := template.ParseFiles("templates/home.tmpl")
+	err = templates.Home(data).Render(w)
 	if err != nil {
-		fmt.Printf("Error parsing home: %v\n", err)
-	}
-	err = tmp.Execute(w, struct{ Status string }{Status: status})
-	if err != nil {
-		fmt.Printf("Error executing home: %v\n", err)
+		slog.Error("Error rendering template", "error", err)
 	}
 }
