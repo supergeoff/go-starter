@@ -26,3 +26,4 @@ go.work.sum
 
 #tools
 tools/tailwindcss
+postCreateCommand.log
