@@ -14,5 +14,6 @@
     ],
     "go.buildFlags": [
         "-tags=mage"
-    ]
+    ],
+    "terminal.integrated.defaultProfile.linux": "zsh",
 }
