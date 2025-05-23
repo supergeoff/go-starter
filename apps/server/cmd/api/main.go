@@ -1,24 +1,26 @@
 package main
 
 import (
-	"encoding/json"
-	"fmt"
+	"log/slog"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/supergeoff/go-starter/apps/server/internal/handler"
 )
 
-func main() {
+// setupRouter configures and returns the chi router.
+func setupRouter() *chi.Mux {
 	r := chi.NewRouter()
-	r.Get("/api", func(w http.ResponseWriter, _ *http.Request) {
-		err := json.NewEncoder(w).Encode(map[string]string{"message": "check"})
-		if err != nil {
-			http.Error(w, "Failed to encode response", http.StatusInternalServerError)
-			return
-		}
-	})
+	r.Get("/api", handler.ApiHandler) // handler.ApiHandler is already tested separately
+	return r
+}
+
+func main() {
+	r := setupRouter()
+	slog.Info("Server starting on :3000") // Added a log message
 	err := http.ListenAndServe(":3000", r)
 	if err != nil {
-		panic(fmt.Sprintf("Server failed to start: %v", err))
+		slog.Error("Server failed to start", "error", err)
+		panic("Server failed to start")
 	}
 }

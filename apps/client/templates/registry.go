@@ -67,7 +67,7 @@ func getRenderer(name string, data interface{}) (*TemplateRenderer, error) {
 
 	if !ok {
 		slog.Error("template not found in registry", "template", name)
-		return nil, errors.New("Error: template not found in registry")
+		return nil, errors.New("error: template not found in registry")
 	}
 	return &TemplateRenderer{template: tmpl, data: data}, nil
 }

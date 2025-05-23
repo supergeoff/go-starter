@@ -20,7 +20,12 @@ func Home(w http.ResponseWriter, r *http.Request) {
 		slog.Error("Error making GET request", "error", err)
 		data.Message = "down"
 	} else {
-		defer resp.Body.Close()
+		defer func() {
+			err := resp.Body.Close()
+			if err != nil {
+				slog.Error("Failed to close response body", "error", err)
+			}
+		}()
 		if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
 			slog.Error("Failed to decode JSON", "error", err)
 		}
