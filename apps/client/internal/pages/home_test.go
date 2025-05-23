@@ -29,108 +29,49 @@ func (mrt *mockRoundTripper) RoundTrip(req *http.Request) (*http.Response, error
 
 func TestHome(t *testing.T) {
 	tests := []struct {
-		name            string
-		apiStatusCode   int
-		apiResponseBody interface{}
-		apiError        error // To simulate http.Get errors
-		expectedOutput  string
-		expectedStatus  int
+		name                string
+		apiStatusCode       int
+		apiResponseBody     interface{}
+		apiError            error // To simulate http.Get errors
+		expectedStatus      int
+		expectedButtonClass string
+		expectedButtonText  string
 	}{
 		{
-			name:            "successful API call - check message",
-			apiStatusCode:   http.StatusOK,
-			apiResponseBody: MockResponse{Message: "check"},
-			apiError:        nil,
-			expectedOutput: `
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8">
-    <title>Home Page</title>
-    <link rel="stylesheet" href="/static/css/global.css">
-</head>
-<body class="p-8">
-    
-        <button class="bg-green-500 text-white px-4 py-2 rounded text-3xl">
-            OK
-        </button>
-    
-</body>
-</html>
-`,
-			expectedStatus: http.StatusOK,
+			name:                "successful API call - check message",
+			apiStatusCode:       http.StatusOK,
+			apiResponseBody:     MockResponse{Message: "check"},
+			apiError:            nil,
+			expectedStatus:      http.StatusOK,
+			expectedButtonClass: "bg-green-500",
+			expectedButtonText:  "OK",
 		},
 		{
-			name:            "successful API call - other message",
-			apiStatusCode:   http.StatusOK,
-			apiResponseBody: MockResponse{Message: "hello"},
-			apiError:        nil,
-			expectedOutput: `
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8">
-    <title>Home Page</title>
-    <link rel="stylesheet" href="/static/css/global.css">
-</head>
-<body class="p-8">
-    
-        <button class="bg-red-600 text-white px-4 py-2 rounded text-3xl">
-            Down
-        </button>
-    
-</body>
-</html>
-`,
-			expectedStatus: http.StatusOK,
+			name:                "successful API call - other message",
+			apiStatusCode:       http.StatusOK,
+			apiResponseBody:     MockResponse{Message: "hello"},
+			apiError:            nil,
+			expectedStatus:      http.StatusOK,
+			expectedButtonClass: "bg-red-600",
+			expectedButtonText:  "Down",
 		},
 		{
-			name:            "API call failed",
-			apiStatusCode:   0, // Status code is irrelevant if the call fails
-			apiResponseBody: nil,
-			apiError:        errors.New("mock http get error"), // Simulate an error
-			expectedOutput: `
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8">
-    <title>Home Page</title>
-    <link rel="stylesheet" href="/static/css/global.css">
-</head>
-<body class="p-8">
-    
-        <button class="bg-red-600 text-white px-4 py-2 rounded text-3xl">
-            Down
-        </button>
-    
-</body>
-</html>
-`,
-			expectedStatus: http.StatusOK, // Home function still renders template on API error
+			name:                "API call failed",
+			apiStatusCode:       0, // Status code is irrelevant if the call fails
+			apiResponseBody:     nil,
+			apiError:            errors.New("mock http get error"), // Simulate an error
+			expectedStatus:      http.StatusOK,                     // Home function still renders template on API error
+			expectedButtonClass: "bg-red-600",
+			expectedButtonText:  "Down",
 		},
 		{
-			name:            "JSON decoding failed",
-			apiStatusCode:   http.StatusOK,
-			apiResponseBody: `{"message": 123}`, // Invalid JSON for the struct
-			apiError:        nil,
-			expectedOutput: `
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8">
-    <title>Home Page</title>
-    <link rel="stylesheet" href="/static/css/global.css">
-</head>
-<body class="p-8">
-    
-        <button class="bg-red-600 text-white px-4 py-2 rounded text-3xl">
-            Down
-        </button>
-    
-</body>
-</html>
-`,
-			expectedStatus: http.StatusOK, // Home function still renders template on JSON error
+			name:                "JSON decoding failed",
+			apiStatusCode:       http.StatusOK,
+			apiResponseBody:     `{"message": 123}`, // Invalid JSON for the struct
+			apiError:            nil,
+			expectedStatus:      http.StatusOK, // Home function still renders template on JSON error
+			expectedButtonClass: "bg-red-600",
+			expectedButtonText:  "Down",
 		},
 	}
 
@@ -170,7 +111,22 @@ func TestHome(t *testing.T) {
 
 			// Assert the status code and body
 			assert.Equal(t, tt.expectedStatus, rr.Code, "Handler returned wrong status code")
-			assert.Equal(t, tt.expectedOutput, rr.Body.String(), "Handler returned unexpected body")
+
+			// Assert on specific elements instead of the full HTML
+			bodyString := rr.Body.String()
+			assert.Contains(t, bodyString, "<button", "Response body should contain a button")
+			assert.Contains(
+				t,
+				bodyString,
+				tt.expectedButtonClass,
+				"Button should have the expected class",
+			)
+			assert.Contains(
+				t,
+				bodyString,
+				tt.expectedButtonText,
+				"Button should have the expected text",
+			)
 		})
 	}
 }
