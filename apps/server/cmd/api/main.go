@@ -5,13 +5,13 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/supergeoff/go-starter/apps/server/internal/handler"
+	"github.com/supergeoff/go-starter/apps/server/internal/handlers"
 )
 
 // setupRouter configures and returns the chi router.
 func setupRouter() *chi.Mux {
 	r := chi.NewRouter()
-	r.Get("/api", handler.ApiHandler) // handler.ApiHandler is already tested separately
+	r.Get("/api", handlers.ApiHandler) // handler.ApiHandler is already tested separately
 	return r
 }
 

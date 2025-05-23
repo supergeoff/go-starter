@@ -16,4 +16,19 @@
         "-tags=mage"
     ],
     "terminal.integrated.defaultProfile.linux": "zsh",
+    "github.copilot.advanced": {
+        "useLanguageServer": true
+    },
+    "github.copilot.chat.codesearch.enabled": true,
+    "github.copilot.chat.agent.thinkingTool": true,
+    "chat.promptFiles": true,
+    "github.copilot.chat.codeGeneration.useInstructionFiles": true,
+    "github.copilot.chat.testGeneration.instructions": [
+        {
+            "file": ".github/copilot-test-instructions.md"
+        },
+        {
+            "text": "Always try uniting related tests in a suite."
+        }
+    ],
 }

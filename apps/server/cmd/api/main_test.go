@@ -6,15 +6,25 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSetupRouter(t *testing.T) {
 	r := setupRouter()
-	foundAPIGet := false
+	require.NotNil(t, r, "setupRouter() should return a non-nil chi.Mux router")
+
+	var foundAPIGet bool
+
 	err := chi.Walk(
 		r,
 		func(method string, route string, handler http.Handler, middlewares ...func(http.Handler) http.Handler) error {
-			assert.NotNil(t, handler)
+			require.NotNil(
+				t,
+				handler,
+				"Handler for method %s, route %s should not be nil",
+				method,
+				route,
+			)
 			if method == "GET" && route == "/api" {
 				foundAPIGet = true
 			}
