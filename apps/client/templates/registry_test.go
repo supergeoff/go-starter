@@ -44,7 +44,8 @@ func TestTemplateRenderer_Render(t *testing.T) {
 			name: "successful render",
 			setupRenderer: func(t *testing.T) *TemplateRenderer {
 				resetGlobalRegistryForTest() // Clean before this test's setup
-				LoadTemplate("success_render_test", "Hello {{.Name}}")
+				// Pass an empty map for componentTmplStrings as this test doesn't involve components
+				LoadTemplate("success_render_test", "Hello {{.Name}}", nil)
 				renderer, err := getRenderer(
 					"success_render_test",
 					map[string]string{"Name": "RenderTest"},
@@ -56,6 +57,25 @@ func TestTemplateRenderer_Render(t *testing.T) {
 			writer:         &bytes.Buffer{},
 			expectedOutput: "Hello RenderTest",
 			cleanup:        resetGlobalRegistryForTest, // Clean after this test
+		},
+		{
+			name: "render with component",
+			setupRenderer: func(t *testing.T) *TemplateRenderer {
+				resetGlobalRegistryForTest()
+				componentTmpl := `{{define "comp"}}Component: {{.Value}}{{end}}`
+				pageTmpl := `Page content. {{template "comp" .}}`
+				LoadTemplate("page_with_comp", pageTmpl, map[string]string{"comp": componentTmpl})
+				renderer, err := getRenderer(
+					"page_with_comp",
+					map[string]string{"Value": "TestValue"},
+				)
+				require.NoError(t, err, "Setup: getRenderer should not fail for component test")
+				require.NotNil(t, renderer, "Setup: renderer should not be nil for component test")
+				return renderer
+			},
+			writer:         &bytes.Buffer{},
+			expectedOutput: "Page content. Component: TestValue",
+			cleanup:        resetGlobalRegistryForTest,
 		},
 		{
 			name: "nil template in renderer",
@@ -71,7 +91,8 @@ func TestTemplateRenderer_Render(t *testing.T) {
 			name: "template execution error due to writer error",
 			setupRenderer: func(t *testing.T) *TemplateRenderer {
 				resetGlobalRegistryForTest()
-				LoadTemplate("writer_error_render_test", "Content")
+				// Pass an empty map for componentTmplStrings as this test doesn't involve components
+				LoadTemplate("writer_error_render_test", "Content", nil)
 				renderer, err := getRenderer("writer_error_render_test", nil)
 				require.NoError(t, err, "Setup: getRenderer should not fail for writer error test")
 				require.NotNil(
