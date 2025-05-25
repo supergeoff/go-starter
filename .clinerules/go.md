@@ -34,7 +34,7 @@
 
 ## Error Handling
 - Use `errors.New` for creating new error messages.
-- Consider `fmt.Errorf` with the `%w` verb for wrapping errors when appropriate to preserve context.
+- Use `slog.Error` to log before returning the error
 
 ## Logging Conventions with slog
 - Standard logging levels:
