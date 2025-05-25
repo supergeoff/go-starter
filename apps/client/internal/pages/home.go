@@ -6,23 +6,15 @@ import (
 	"net/http"
 
 	"github.com/supergeoff/go-starter/apps/client/templates"
+	"github.com/supergeoff/go-starter/apps/client/templates/components" // Import components for ButtonProps
 )
-
-type ButtonData struct {
-	ButtonText string
-	ColorClass string
-}
-
-type HomePageData struct {
-	Message    string
-	ButtonData ButtonData
-}
 
 func Home(w http.ResponseWriter, r *http.Request) {
 	var apiResponse struct {
 		Message string `json:"message"`
 	}
-	var pageData HomePageData
+
+	var pageData templates.HomePageData
 
 	resp, err := http.Get("http://localhost:3000/api")
 	if err != nil {
@@ -40,16 +32,22 @@ func Home(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	pageData.Message = apiResponse.Message
-
-	// Logic for button
-	if pageData.Message == "check" {
-		pageData.ButtonData.ButtonText = "OK"
-		pageData.ButtonData.ColorClass = "bg-green-500"
-	} else {
-		pageData.ButtonData.ButtonText = "Down"
-		pageData.ButtonData.ColorClass = "bg-red-600"
+	// Initialize ButtonData with default values
+	buttonProps := components.ButtonProps{
+		Variant: "default", // Set a default variant
+		Size:    "default", // Set a default size
 	}
+
+	// Logic for button based on API response
+	if apiResponse.Message == "check" {
+		buttonProps.Text = "OK"
+		buttonProps.Variant = "success"
+	} else {
+		buttonProps.Text = "Down"
+		buttonProps.Variant = "destructive"
+	}
+
+	pageData.ButtonData = buttonProps // Assign the prepared buttonProps
 
 	err = templates.Home(pageData).Render(w)
 	if err != nil {

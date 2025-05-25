@@ -56,7 +56,8 @@ func LoadTemplate(name string, pageTmplString string, componentTmplStrings map[s
 	for componentName, componentStr := range componentTmplStrings {
 		// The Parse method adds the definitions from componentStr to tmpl.
 		// If componentStr contains {{define "compName"}}, "compName" becomes available.
-		_, err := tmpl.Parse(componentStr)
+		var err error
+		tmpl, err = tmpl.Parse(componentStr) // Assign back to tmpl to ensure chaining
 		if err != nil {
 			slog.Error("failed to parse component template into page template",
 				"page", name, "component", componentName, "error", err)
@@ -74,7 +75,9 @@ func LoadTemplate(name string, pageTmplString string, componentTmplStrings map[s
 	}
 
 	// Now parse the main page template string itself into the same template set.
-	_, err := tmpl.Parse(pageTmplString)
+	// This template (e.g., "home") can now refer to the components (e.g., "button").
+	var err error
+	tmpl, err = tmpl.Parse(pageTmplString) // Assign back to tmpl
 	if err != nil {
 		slog.Error("failed to parse main page template string", "template", name, "error", err)
 		panic("Error: failed to parse main page template '" + name + "': " + err.Error())

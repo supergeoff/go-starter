@@ -6,6 +6,12 @@ import (
 	"github.com/supergeoff/go-starter/apps/client/templates/components"
 )
 
+// HomePageData defines the structure of data expected by the home template.
+type HomePageData struct {
+	ButtonData components.ButtonProps
+	// Add other fields specific to the home page here
+}
+
 const tmplString string = `
 <!DOCTYPE html>
 <html>
@@ -34,6 +40,7 @@ func init() {
 }
 
 // Home prepares the home template for rendering with the given data.
+// The data parameter should be of type HomePageData.
 // It returns a TemplateRenderer, which has a Render method.
 // It panics if the "home" template is not found in the registry,
 // which would indicate an issue with the init loading process.
