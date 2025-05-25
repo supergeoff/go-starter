@@ -3,7 +3,9 @@
 package main
 
 import (
+	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -29,11 +31,27 @@ func getWorkspaceModules() ([]string, error) {
 	data, err := os.ReadFile(workFilePath)
 	if err != nil {
 		wd, _ := os.Getwd()
-		return nil, fmt.Errorf("failed to read %s (CWD: %s): %w", workFilePath, wd, err)
+		slog.Error(
+			"Failed to read go.work file",
+			"path",
+			workFilePath,
+			"cwd",
+			wd,
+			"original_error",
+			err.Error(),
+		)
+		return nil, errors.New("failed to read go.work file")
 	}
 	wf, err := modfile.ParseWork(filepath.Base(workFilePath), data, nil)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse %s: %w", workFilePath, err)
+		slog.Error(
+			"Failed to parse go.work file",
+			"path",
+			workFilePath,
+			"original_error",
+			err.Error(),
+		)
+		return nil, errors.New("failed to parse go.work file")
 	}
 	var modules []string
 	for _, use := range wf.Use {
@@ -43,22 +61,23 @@ func getWorkspaceModules() ([]string, error) {
 }
 
 func Lint() error {
-	fmt.Println("Reading modules from go.work (from tools/magefile.go)...")
+	slog.Info("Reading modules from go.work (from tools/magefile.go)")
 	modules, err := getWorkspaceModules()
 	if err != nil {
-		return fmt.Errorf("could not get workspace modules: %w", err)
+		// getWorkspaceModules already logs the error, so we just return a new one.
+		return errors.New("could not get workspace modules")
 	}
 
 	if len(modules) == 0 {
-		fmt.Println("No modules found in go.work. Nothing to lint.")
+		slog.Info("No modules found in go.work. Nothing to lint.")
 		return nil
 	}
 
-	fmt.Printf("Found modules to lint: %v\n", modules)
-	fmt.Println("Linting Go modules in workspace (from tools/magefile.go)...")
+	slog.Info("Found modules to lint", "modules", modules)
+	slog.Info("Linting Go modules in workspace (from tools/magefile.go)")
 
 	for _, modulePath := range modules {
-		fmt.Printf("===> Linting module: %s\n", modulePath)
+		slog.Info("Linting module", "module", modulePath)
 		modulePath = filepath.Clean(modulePath)
 
 		// This is the actual directory where the module resides, relative to workspace root
@@ -72,17 +91,28 @@ func Lint() error {
 			"./...",             // Lint all packages within the CWD
 		}
 
-		fmt.Printf("Running: (cd %s && golangci-lint %v)\n", relModuleDir, args)
+		slog.Info("Running golangci-lint", "directory", relModuleDir, "args", args)
 		// Call run with the target directory
 		err := run(relModuleDir, "golangci-lint", args...)
 		if err != nil {
-			// The error from run already includes command details if cmd.Run() fails
-			return fmt.Errorf("golangci-lint failed for module %s: %w", modulePath, err)
+			slog.Error(
+				"golangci-lint failed for module",
+				"module",
+				modulePath,
+				"directory",
+				relModuleDir,
+				"original_error",
+				err.Error(),
+			)
+			return fmt.Errorf(
+				"golangci-lint failed for module %s",
+				modulePath,
+			) // Use fmt.Errorf to include modulePath in the returned error message
 		}
-		fmt.Printf("<=== Finished linting module: %s\n", modulePath)
+		slog.Info("Finished linting module", "module", modulePath)
 	}
 
-	fmt.Println("All modules linted successfully (by tools/magefile.go).")
+	slog.Info("All modules linted successfully (by tools/magefile.go)")
 	return nil
 }
 
@@ -99,28 +129,38 @@ func Install() error {
 	// Check if the tool already exists and is executable in the tools directory
 	if info, err := os.Stat(finalPath); err == nil {
 		if !info.IsDir() && (info.Mode().Perm()&0o111 != 0) { // Check if it's a file and executable
-			fmt.Printf(
-				"Tailwind CSS (%s) already installed and executable in tools/. Skipping installation.\n",
+			slog.Info(
+				"Tailwind CSS already installed and executable. Skipping installation.",
+				"path",
 				finalPath,
 			)
 			return nil
 		}
 		// File exists but is not a valid executable (e.g., a directory, or not executable).
 		// We'll proceed to remove it and reinstall.
-		fmt.Printf(
-			"Found %s in tools/, but it's not a valid executable file or has wrong permissions. Proceeding with re-installation.\n",
+		slog.Warn(
+			"Found Tailwind CSS in tools, but it's not a valid executable or has wrong permissions. Proceeding with re-installation.",
+			"path",
 			finalPath,
 		)
 		if err := os.RemoveAll(finalPath); err != nil { // Use RemoveAll in case it's a directory
-			return fmt.Errorf("failed to remove existing non-executable %s: %w", finalPath, err)
+			slog.Error(
+				"Failed to remove existing non-executable Tailwind CSS",
+				"path",
+				finalPath,
+				"original_error",
+				err.Error(),
+			)
+			return fmt.Errorf("failed to remove existing non-executable %s", finalPath)
 		}
 	} else if !os.IsNotExist(err) {
 		// An error other than "file does not exist" occurred with os.Stat
-		return fmt.Errorf("failed to check status of %s in tools/: %w", finalPath, err)
+		slog.Error("Failed to check status of Tailwind CSS executable", "path", finalPath, "original_error", err.Error())
+		return fmt.Errorf("failed to check status of %s", finalPath)
 	}
 	// If os.IsNotExist(err) is true, or if we've removed an invalid existing file, proceed with installation.
 
-	fmt.Println("Installing Tailwind CSS to tools/ ...")
+	slog.Info("Installing Tailwind CSS to tools/")
 
 	tailwindURL := "https://github.com/tailwindlabs/tailwindcss/releases/download/v4.1.7/tailwindcss-linux-x64"
 	// downloadPath is also relative to the tools directory
@@ -129,27 +169,50 @@ func Install() error {
 	// Clean up potentially existing temporary download file
 	_ = os.Remove(downloadPath)
 
-	fmt.Printf("Downloading Tailwind CSS from %s to %s (in tools/)...\n", tailwindURL, downloadPath)
+	slog.Info("Downloading Tailwind CSS", "url", tailwindURL, "destination", downloadPath)
 	// The run command's workDir is "", so it executes in the current directory (tools/)
 	err := run("", "curl", "-sLO", tailwindURL)
 	if err != nil {
-		return fmt.Errorf("failed to download Tailwind CSS: %w", err)
+		slog.Error(
+			"Failed to download Tailwind CSS",
+			"url",
+			tailwindURL,
+			"original_error",
+			err.Error(),
+		)
+		return errors.New("failed to download Tailwind CSS")
 	}
 
 	// Rename the downloaded file
-	fmt.Printf("Renaming %s to %s (in tools/)...\n", downloadPath, finalPath)
+	slog.Info("Renaming downloaded file", "from", downloadPath, "to", finalPath)
 	if err := os.Rename(downloadPath, finalPath); err != nil {
 		_ = os.Remove(downloadPath) // Attempt to clean up downloaded file if rename fails
-		return fmt.Errorf("failed to rename %s to %s: %w", downloadPath, finalPath, err)
+		slog.Error(
+			"Failed to rename downloaded Tailwind CSS file",
+			"from",
+			downloadPath,
+			"to",
+			finalPath,
+			"original_error",
+			err.Error(),
+		)
+		return fmt.Errorf("failed to rename %s to %s", downloadPath, finalPath)
 	}
 
 	// Make it executable
-	fmt.Printf("Making %s executable (in tools/)...\n", finalPath)
+	slog.Info("Making file executable", "path", finalPath)
 	if err := os.Chmod(finalPath, 0o755); err != nil {
 		_ = os.Remove(finalPath) // Attempt to clean up renamed file if chmod fails
-		return fmt.Errorf("failed to make %s executable: %w", finalPath, err)
+		slog.Error(
+			"Failed to make Tailwind CSS executable",
+			"path",
+			finalPath,
+			"original_error",
+			err.Error(),
+		)
+		return fmt.Errorf("failed to make %s executable", finalPath)
 	}
 
-	fmt.Printf("Tailwind CSS (%s) installed successfully in tools/.\n", finalPath)
+	slog.Info("Tailwind CSS installed successfully", "path", finalPath)
 	return nil
 }
