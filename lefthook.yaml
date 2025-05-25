@@ -1,10 +1,10 @@
-# pre-commit:
-#   parallel: true
-#   commands:
-#     format:
-#       run: golangci-lint fmt ./...
-#     lint:
-#       run: mage Lint
+pre-commit:
+  parallel: true
+  commands:
+    format:
+      run: golangci-lint fmt ./...
+    lint:
+      run: mage Lint
 commit-msg:
   commands:
     conventional:
