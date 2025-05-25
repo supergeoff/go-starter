@@ -3,7 +3,7 @@
 # Exit immediately if a command exits with a non-zero status.
 set -e
 # Optional: Print commands and their arguments as they are executed for debugging.
-set -x
+# set -x
 
 COMMIT_MSG_FILE="$1" # The first argument passed to the script
 
@@ -17,10 +17,10 @@ if [ ! -f "$COMMIT_MSG_FILE" ]; then
   exit 1
 fi
 
-echo "Debug: Validating file: $COMMIT_MSG_FILE" >&2
-echo "--- Start of content ---" >&2
-cat "$COMMIT_MSG_FILE" >&2
-echo "--- End of content ---" >&2
+# echo "Debug: Validating file: $COMMIT_MSG_FILE" >&2
+# echo "--- Start of content ---" >&2
+# cat "$COMMIT_MSG_FILE" >&2
+# echo "--- End of content ---" >&2
 
 if grep -Eq '^(feat|fix|docs|style|refactor|perf|test|chore)(\(.+\))?: .{1,72}$' "$COMMIT_MSG_FILE"; then
   echo "✅ Commit message format is valid." >&2 # Optional success message
