@@ -3,6 +3,7 @@ package pages
 import (
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -91,9 +92,15 @@ func TestHome(t *testing.T) {
 					if tt.apiResponseBody != nil {
 						// Handle string body for JSON decoding failure test
 						if bodyStr, ok := tt.apiResponseBody.(string); ok {
-							recorder.WriteString(bodyStr)
+							_, err := recorder.WriteString(bodyStr)
+							if err != nil {
+								slog.Error("Error writting string", "error", err)
+							}
 						} else {
-							json.NewEncoder(recorder).Encode(tt.apiResponseBody)
+							err := json.NewEncoder(recorder).Encode(tt.apiResponseBody)
+							if err != nil {
+								slog.Error("Error encoding json", "error", err)
+							}
 						}
 					}
 

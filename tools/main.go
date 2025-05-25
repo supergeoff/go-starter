@@ -68,7 +68,8 @@ func Lint() error {
 
 		args := []string{
 			"run",
-			"./...", // Lint all packages within the CWD
+			"--build-tags=mage", // Include files with 'mage' build tag
+			"./...",             // Lint all packages within the CWD
 		}
 
 		fmt.Printf("Running: (cd %s && golangci-lint %v)\n", relModuleDir, args)
