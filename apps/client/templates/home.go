@@ -14,8 +14,9 @@ const tmplString string = `
     <title>Home Page</title>
     <link rel="stylesheet" href="/static/css/global.css">
 </head>
-<body class="p-8">
-    {{template "button" .}} {{/* Pass current data context '.' to button */}}
+<body class="min-h-screen flex flex-col items-center justify-center p-8">
+    <h1 class="text-4xl font-bold mb-8">Health Check</h1>
+    {{template "button" .ButtonData}} {{/* Pass button-specific data to button template */}}
 </body>
 </html>
 `

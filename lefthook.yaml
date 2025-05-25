@@ -1,0 +1,13 @@
+pre-commit:
+  parallel: true
+  commands:
+    format:
+      run: golangci-lint fmt ./...
+    lint:
+      run: mage Lint
+commit-msg:
+  commands:
+    conventional:
+      run: |
+        if ! grep -Eq '^(feat|fix|docs|style|refactor|perf|test|chore)(\(.+\))?: .{1,72}$' $1; then
+          echo "❌ Commit message non conforme"; exit 1; fi
