@@ -21,5 +21,8 @@ func Serve(dirpath string) error {
 }
 
 func Install() error {
+	if err := sh.RunV("go", "work", "sync"); err != nil {
+		return err
+	}
 	return sh.RunV("mage", "-d", "./tools", "install")
 }
