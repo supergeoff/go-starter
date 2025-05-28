@@ -30,3 +30,5 @@ postCreateCommand.log
 
 #temp files
 tmp
+
+dist
