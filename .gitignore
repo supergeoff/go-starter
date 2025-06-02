@@ -28,10 +28,10 @@ tools/tailwindcss
 postCreateCommand.log
 
 #temp files
-tmp
 tmp/
 
-dist
-dist/*
+#dist folder
+dist/
 
-mage_output_file.go
+#mage files
+/mage_output_file.go
