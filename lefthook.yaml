@@ -3,6 +3,8 @@ pre-commit:
   commands:
     format:
       run: golangci-lint fmt ./...
+      exclude:
+        - mage_output_file.go
     lint:
       run: mage Lint
 commit-msg:

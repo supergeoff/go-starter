@@ -10,4 +10,4 @@ formatters:
     - golines
   exclusions:
     paths:
-      - mage_output_file.go
+      - ".*_output_file.go$"
