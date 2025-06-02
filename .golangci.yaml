@@ -10,4 +10,4 @@ formatters:
     - golines
   exclusions:
     paths:
-      - ".*_output_file.go$"
+      - "mage_output_file.go"

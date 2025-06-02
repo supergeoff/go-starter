@@ -32,6 +32,6 @@ tmp
 tmp/
 
 dist
-dist/
+dist/*
 
 mage_output_file.go
