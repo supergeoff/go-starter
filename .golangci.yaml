@@ -1,11 +1,6 @@
 version: 2
 linters:
   default: standard
-issues:
-  exclude-rules:
-    # Exclude mage's temporary compilation output file if it ever appears.
-    # This prevents errors if linters/formatters try to process it.
-    - path: mage_output_file.go
 formatters:
   enable:
     - gci
@@ -13,3 +8,6 @@ formatters:
     - gofumpt
     - goimports
     - golines
+  exclusions:
+    paths:
+      - mage_output_file.go

@@ -114,6 +114,68 @@ func (c *PoeClient) StreamQuery(
 	return eventChan, errChan
 }
 
+// dispatchPoeEvent handles logging and sending a PoeSSEEvent.
+// It specifically parses and logs "error" type events with more detail.
+func dispatchPoeEvent(
+	ctx context.Context,
+	event types.PoeSSEEvent,
+	botName string,
+	eventChan chan<- types.PoeSSEEvent,
+) error {
+	if event.Event == "error" {
+		var poeErrData types.PoeErrorEventData
+		if err := json.Unmarshal([]byte(event.Data), &poeErrData); err != nil {
+			slog.Error("Failed to unmarshal Poe error event data",
+				"raw_data", event.Data,
+				"parse_error", err.Error(),
+				"bot_name", botName,
+			)
+			// Still send the raw event if parsing fails, caller might handle raw data
+		} else {
+			logLevel := slog.LevelWarn // Default to Warn for API-level issues from Poe
+
+			logAttrs := []slog.Attr{
+				slog.String("bot_name", botName),
+				slog.Bool("poe_allow_retry", poeErrData.AllowRetry),
+			}
+			if poeErrData.Text != nil {
+				logAttrs = append(logAttrs, slog.String("poe_error_text", *poeErrData.Text))
+			}
+			if poeErrData.ErrorType != nil {
+				logAttrs = append(logAttrs, slog.String("poe_error_type", *poeErrData.ErrorType))
+			}
+
+			slog.Default().LogAttrs(ctx, logLevel, "Poe API returned an error event", logAttrs...)
+		}
+	} else {
+		// For non-error events, log event type and data length at debug level
+		slog.Debug("Dispatching Poe SSE event",
+			"event_type", event.Event,
+			"data_length", len(event.Data), // Log length instead of full data for brevity
+			"bot_name", botName,
+		)
+	}
+
+	// Send the event to the channel
+	select {
+	case eventChan <- event:
+		return nil
+	case <-ctx.Done():
+		slog.Warn(
+			"Context cancelled while sending event to channel",
+			"event_type",
+			event.Event,
+			"error",
+			ctx.Err(),
+		)
+		return fmt.Errorf(
+			"context cancelled while sending event type %s: %w",
+			event.Event,
+			ctx.Err(),
+		)
+	}
+}
+
 func (c *PoeClient) performStreamQuery(
 	ctx context.Context,
 	botName string,
@@ -232,23 +294,12 @@ func (c *PoeClient) performStreamQuery(
 		if err != nil {
 			if err == io.EOF {
 				// Process any accumulated data before returning EOF
-				if accumulatedData.Len() > 0 {
+				if accumulatedData.Len() > 0 ||
+					currentEvent.Event != "" { // Ensure event has type if data is empty
 					currentEvent.Data = strings.TrimSpace(accumulatedData.String())
-					slog.Debug(
-						"Dispatching final Poe SSE event before EOF",
-						"event_type",
-						currentEvent.Event,
-						"data",
-						currentEvent.Data,
-					)
-					select {
-					case eventChan <- currentEvent:
-					case <-ctx.Done():
-						slog.Warn("Context cancelled while sending final event before EOF")
-						return fmt.Errorf(
-							"context cancelled while sending final event: %w",
-							ctx.Err(),
-						)
+					if dispatchErr := dispatchPoeEvent(ctx, currentEvent, botName, eventChan); dispatchErr != nil {
+						// dispatchPoeEvent already logs context cancellation
+						return dispatchErr
 					}
 				}
 				slog.Debug("EOF reached while reading SSE stream from Poe.")
@@ -274,20 +325,14 @@ func (c *PoeClient) performStreamQuery(
 
 		if strings.HasPrefix(line, "event:") {
 			// If there's accumulated data for a previous event, dispatch it first
-			if accumulatedData.Len() > 0 && currentEvent.Event != "" {
+			if accumulatedData.Len() > 0 ||
+				currentEvent.Event != "" { // Ensure event has type if data is empty
 				currentEvent.Data = strings.TrimSpace(accumulatedData.String())
-				slog.Debug(
-					"Dispatching Poe SSE event (event before new event line)",
-					"event_type",
-					currentEvent.Event,
-					"data",
-					currentEvent.Data,
-				)
-				select {
-				case eventChan <- currentEvent:
-				case <-ctx.Done():
-					slog.Warn("Context cancelled while sending event (before new event line)")
-					return fmt.Errorf("context cancelled while sending event: %w", ctx.Err())
+				// Dispatch only if event type is set (it might be from a previous line)
+				if currentEvent.Event != "" {
+					if dispatchErr := dispatchPoeEvent(ctx, currentEvent, botName, eventChan); dispatchErr != nil {
+						return dispatchErr
+					}
 				}
 				accumulatedData.Reset()
 			}
@@ -300,12 +345,8 @@ func (c *PoeClient) performStreamQuery(
 		} else if trimmedLine == "" { // Empty line signifies end of an event
 			if currentEvent.Event != "" || accumulatedData.Len() > 0 { // Ensure there's something to send
 				currentEvent.Data = strings.TrimSpace(accumulatedData.String())
-				slog.Debug("Dispatching Poe SSE event (after empty line)", "event_type", currentEvent.Event, "data", currentEvent.Data)
-				select {
-				case eventChan <- currentEvent:
-				case <-ctx.Done():
-					slog.Warn("Context cancelled while sending event (after empty line)")
-					return fmt.Errorf("context cancelled while sending event: %w", ctx.Err())
+				if dispatchErr := dispatchPoeEvent(ctx, currentEvent, botName, eventChan); dispatchErr != nil {
+					return dispatchErr
 				}
 				currentEvent = types.PoeSSEEvent{} // Reset for next event
 				accumulatedData.Reset()

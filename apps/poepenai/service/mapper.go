@@ -26,7 +26,7 @@ func OpenAIToPoeRole(openAIRole string) string {
 		return "user"
 	case "developer": // OpenAI's new "developer" role can map to Poe's "user" or "system"
 		slog.Debug("Mapping OpenAI 'developer' role to Poe 'user' role.")
-		return "user" // Or "system" if appropriate contextually, but "user" is safer.
+		return "user"
 	case "assistant":
 		return "bot"
 	case "tool":
@@ -102,21 +102,46 @@ func TransformOpenAIRequestToPoeQuery(
 		switch c := msg.Content.(type) {
 		case string:
 			contentStr = c
-		case []types.OpenAIContentPart:
+		case []types.OpenAIContentPart: // Handles already correctly typed content parts
 			var textParts []string
 			for _, part := range c {
 				switch part.Type {
 				case "text":
 					textParts = append(textParts, part.Text)
 				case "image_url":
-					slog.Warn("Image_url content part received in OpenAI request, mapping to Poe attachment not yet implemented in this function.", "message_index", i)
+					slog.Warn("Image_url content part received in OpenAI request (typed []OpenAIContentPart), mapping to Poe attachment not yet implemented.", "message_index", i)
 				default:
-					slog.Warn("Unknown OpenAI content part type", "type", part.Type, "message_index", i)
+					slog.Warn("Unknown OpenAI content part type (typed []OpenAIContentPart)", "type", part.Type, "message_index", i)
+				}
+			}
+			contentStr = strings.Join(textParts, "\n")
+		case []interface{}: // Handles content parts unmarshalled as generic slice
+			var textParts []string
+			slog.Debug("OpenAI message content is []interface{}, processing as content parts.", "message_index", i)
+			for partIdx, item := range c {
+				if partMap, ok := item.(map[string]interface{}); ok {
+					partType, _ := partMap["type"].(string)
+					switch partType {
+					case "text":
+						if textVal, ok := partMap["text"].(string); ok {
+							textParts = append(textParts, textVal)
+						} else {
+							slog.Warn("OpenAI 'text' content part has non-string text field.", "message_index", i, "part_index", partIdx, "text_field", partMap["text"])
+						}
+					case "image_url":
+						// imageURLData, _ := partMap["image_url"].(map[string]interface{})
+						// url, _ := imageURLData["url"].(string)
+						slog.Warn("Image_url content part received in OpenAI request (unmarshalled []interface{}), mapping to Poe attachment not yet implemented.", "message_index", i, "part_index", partIdx)
+					default:
+						slog.Warn("Unknown OpenAI content part type in []interface{}", "type", partType, "message_index", i, "part_index", partIdx)
+					}
+				} else {
+					slog.Warn("Item in OpenAI message content array is not a valid content part object (map[string]interface{}).", "message_index", i, "part_index", partIdx, "item_type", fmt.Sprintf("%T", item))
 				}
 			}
 			contentStr = strings.Join(textParts, "\n")
 		default:
-			slog.Warn("OpenAI message content is not a string or recognized []OpenAIContentPart, attempting to serialize.", "message_index", i, "content_type", fmt.Sprintf("%T", msg.Content))
+			slog.Warn("OpenAI message content is not a string, []OpenAIContentPart, or []interface{}, attempting to serialize.", "message_index", i, "content_type", fmt.Sprintf("%T", msg.Content))
 			complexContentBytes, err := json.Marshal(msg.Content)
 			if err == nil {
 				contentStr = string(complexContentBytes)
